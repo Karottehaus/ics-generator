@@ -5,12 +5,14 @@ from settings import AUTOCOMPLETE_URL
 
 def get_address_suggestions(query):
     api_key = get_google_maps_api_key()
-    if not api_key or not query or len(query) < 4:
+    query = query.strip() if query else ""
+    if not api_key or len(query) < 4:
         return []
 
     headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": api_key
+        "X-Goog-Api-Key": api_key,
+        "X-Goog-FieldMask": "suggestions.placePrediction.text.text"
     }
     data = {"input": query}
 
@@ -21,11 +23,17 @@ def get_address_suggestions(query):
             headers=headers,
             timeout=5
         )
+        response.raise_for_status()
 
-        if response.status_code == 200:
-            suggestions = response.json().get("suggestions", [])
-            return [s["placePrediction"]["text"]["text"] for s in suggestions if "placePrediction" in s]
-    except Exception:
-        pass
+        suggestions = response.json().get("suggestions", [])
+        return [
+            suggestion["placePrediction"]["text"]["text"]
+            for suggestion in suggestions
+        ]
+
+    except requests.RequestException as exc:
+        print(f"Autocomplete request failed: {exc}")
+    except (ValueError, KeyError, TypeError) as exc:
+        print(f"Invalid autocomplete response: {exc}")
 
     return []
