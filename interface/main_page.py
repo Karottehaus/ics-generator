@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from settings import TIMEZONE
 from src.ics_generator import create_content
 from src.addr_autocomplete import get_address_suggestions
+from src.error_handler import validate_input
 
 
 def build_page():
@@ -62,35 +63,30 @@ def build_page():
 
     submitted = st.button("Create calendar file", type="primary")
 
-    if submitted:
-        if not title.strip():
-            st.error("Event title is required.")
-        elif event_date is None or event_time is None:
-            st.error("Date and start time are required.")
-        else:
-            start = datetime.combine(event_date, event_time, tzinfo=TIMEZONE)
-            end = start + timedelta(minutes=duration_minutes)
-            ics_content = create_content(
-                title=title.strip(),
-                start=start,
-                end=end,
-                description=description,
-                location=st.session_state.location_input,
-                url=url
-            )
+    if submitted and validate_input(title, event_date, event_time):
+        start = datetime.combine(event_date, event_time, tzinfo=TIMEZONE)
+        end = start + timedelta(minutes=duration_minutes)
+        ics_content = create_content(
+            title=title.strip(),
+            start=start,
+            end=end,
+            description=description,
+            location=st.session_state.location_input,
+            url=url
+        )
 
-            safe_file_name = file_name.strip() or "event.ics"
-            if not safe_file_name.lower().endswith(".ics"):
-                safe_file_name += ".ics"
+        safe_file_name = file_name.strip() or "event.ics"
+        if not safe_file_name.lower().endswith(".ics"):
+            safe_file_name += ".ics"
 
-            st.success("Your calendar file is ready.")
-            st.download_button(
-                "Download ICS file",
-                data=ics_content.encode("utf-8"),
-                file_name=safe_file_name,
-                mime="text/calendar; charset=utf-8",
-                type="primary"
-            )
+        st.success("Your calendar file is ready.")
+        st.download_button(
+            "Download ICS file",
+            data=ics_content.encode("utf-8"),
+            file_name=safe_file_name,
+            mime="text/calendar; charset=utf-8",
+            type="primary"
+        )
 
-            with st.expander("Preview ICS content"):
-                st.code(ics_content, language=None)
+        with st.expander("Preview ICS content"):
+            st.code(ics_content, language=None)
